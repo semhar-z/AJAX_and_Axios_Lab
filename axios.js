@@ -1,5 +1,11 @@
 import * as Carousel from "./Carousel.js";
 import axios from "axios";
+import $ from "jquery"; // i had to trouble shoot many times
+
+console.log("JavaScript is connected!"); // to check if my file was connected//
+$(document).ready(function () {
+  console.log("jQuery is working!");
+});
 
 /**
  * 4. Change all of your fetch() functions to axios!
@@ -14,6 +20,42 @@ import axios from "axios";
 axios.defaults.baseURL = "https://api.thecatapi.com/v1/";
 axios.defaults.headers.common["x-api-key"] =
   "live_7blkr7G0U0f5KrDrETToJEHRKQGB0QB8KFKYQZjNyZXxSlqrWnZpIgoik5Jj6aT9";
+// part 5, 6 , 7
+axios.interceptors.request.use((request) => {
+  document.getElementById("progressBar").style.width = "0%";
+  document.body.style.cursor = "progress";
+
+  request.metadata = request.metadata || {};
+  request.metadata.startTime = new Date().getTime();
+  return request;
+});
+
+axios.interceptors.response.use(
+  (response) => {
+    response.config.metadata.endTime = new Date().getTime();
+    response.config.metadata.durationInMS =
+      response.config.metadata.endTime - response.config.metadata.startTime;
+
+    console.log(
+      `Request took ${response.config.metadata.durationInMS} milliseconds.`
+    );
+
+    document.body.style.cursor = 'default';
+    return response;
+  },
+  (error) => {
+    error.config.metadata.endTime = new Date().getTime();
+    error.config.metadata.durationInMS =
+      error.config.metadata.endTime - error.config.metadata.startTime;
+
+    console.log(
+      `Request took ${error.config.metadata.durationInMS} milliseconds.`
+    );
+
+    document.body.style.cursor = 'default';
+    throw error;
+  }
+);
 
 async function initialLoad() {
   try {
@@ -38,7 +80,16 @@ async function initialLoad() {
   }
 }
 
+initialLoad();
+
+// Add event listener for dropdown change
+breedSelect.addEventListener("change", async (event) => {
+  const selectedBreedId = event.target.value; // Get the selected breed ID
+  await loadBreedData(selectedBreedId); // Load the selected breed data
+});
+
 async function loadBreedData(breedId) {
+  console.log("Fetching breed data..."); // to check if this is working
   try {
     // Fetch breed-specific images
     const response = await axios.get(`images/search`, {
@@ -46,6 +97,7 @@ async function loadBreedData(breedId) {
         breed_ids: breedId,
         limit: 5,
       },
+      onDownloadProgress: updateProgress,
     });
     const images = response.data;
 
@@ -82,6 +134,7 @@ async function loadBreedData(breedId) {
 
     // Retrieve breed information
     const breedResponse = await axios.get(`breeds/${breedId}`);
+    console.log("Breed info response:", breedResponse.data);
     const breedInfo = breedResponse.data;
 
     // Display breed info in infoDump
@@ -102,6 +155,7 @@ async function loadBreedData(breedId) {
 }
 
 /**
+ *    this part five is done on the top part of the file
  * 5. Add axios interceptors to log the time between request and response to the console.
  * - Hint: you already have access to code that does this!
  * - Add a console.log statement to indicate when requests begin.
@@ -124,6 +178,17 @@ async function loadBreedData(breedId) {
  *   with for future projects.
  */
 
+
+function updateProgress(progressEvent) {
+  const total = progressEvent.total;
+  const current = progressEvent.loaded;
+  const percentCompleted = Math.round((current / total) * 100);
+  document.getElementById('progressBar').style.width = percentCompleted + '%';
+  console.log(progressEvent); // Inspect the progress event object
+}
+
+
+
 /**
  * 7. As a final element of progress indication, add the following to your axios interceptors:
  * - In your request interceptor, set the body element's cursor style to "progress."
@@ -141,8 +206,33 @@ async function loadBreedData(breedId) {
  * - You can call this function by clicking on the heart at the top right of any image.
  */
 export async function favourite(imgId) {
-  // your code here
-}
+ 
+    try {
+      // First, get the list of favourites to see if the image is already favourited
+      const response = await axios.get('favourites');
+      const favourites = response.data;
+  
+      // Check if the image is already favourited
+      const isFavourited = favourites.some(fav => fav.image_id === imgId);
+      
+      if (isFavourited) {
+        // If it is favourited, remove it
+        await axios.delete(`favourites/${favourites.find(fav => fav.image_id === imgId).id}`);
+        console.log(`Removed image ${imgId} from favourites.`);
+      } else {
+        // If it is not favourited, add it
+        await axios.post('favourites', {
+          image_id: imgId,
+        });
+        console.log(`Added image ${imgId} to favourites.`);
+      }
+    } catch (error) {
+      console.error("Error managing favourites:", error);
+    }
+  }
+  
+  
+
 
 /**
  * 9. Test your favourite() function by creating a getFavourites() function.
@@ -153,6 +243,57 @@ export async function favourite(imgId) {
  *    If that isn't in its own function, maybe it should be so you don't have to
  *    repeat yourself in this section.
  */
+
+
+export async function getFavourites() {
+  try {
+    const response = await axios.get('favourites');
+    const favourites = response.data;
+
+
+ // Log the favourites array to inspect the structure
+ console.log(favourites); 
+
+
+    const carouselInner = document.getElementById("carouselInner");
+    carouselInner.innerHTML = ""; // Clear the current carousel items
+
+    favourites.forEach((fav) => {
+      const carouselItem = document.createElement("div");
+      carouselItem.classList.add("carousel-item");
+
+      const imgElement = document.createElement("img");
+
+     // Check if fav.image and fav.image.url exist before setting the src
+     if (fav.image && fav.image.url) {
+      imgElement.src = fav.image.url; 
+    } else {
+      console.warn("No image URL found for favourite:", fav);
+      imgElement.src = "placeholder.jpg"; // Optionally set a placeholder image
+    }
+
+
+
+      // imgElement.src = fav.image.url; // Assuming fav.image contains the URL
+      imgElement.alt = "Favourited Cat Image";
+      imgElement.style.width = "100%"; // Adjust as needed
+      imgElement.style.height = "auto";
+
+      carouselItem.appendChild(imgElement);
+      carouselInner.appendChild(carouselItem);
+    });
+
+
+
+  } catch (error) {
+    console.error("Error fetching favourites:", error);
+  }
+}
+
+// Bind the event listener to the button
+document.getElementById('getFavouritesBtn').addEventListener('click', getFavourites);
+
+
 
 /**
  * 10. Test your site, thoroughly!
