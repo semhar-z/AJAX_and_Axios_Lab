@@ -12,6 +12,8 @@ const getFavouritesBtn = document.getElementById("getFavouritesBtn");
 
 // Part 1: The API
 // Step 0: Store your API key here for reference and easy access.
+const url = "https://api.thecatapi.com/v1/images/search";
+
 const API_KEY =
   "live_7blkr7G0U0f5KrDrETToJEHRKQGB0QB8KFKYQZjNyZXxSlqrWnZpIgoik5Jj6aT9";
 
@@ -29,20 +31,37 @@ async function initialLoad() {
   try {
     const response = await fetch("https://api.thecatapi.com/v1/breeds", {
       headers: {
-        "x-api-key":
-          "live_7blkr7G0f5KrDrETToJEHRKQGB0QB8KFKYQZjNyZXxSlqrWnZpIgoik5Jj6aT9", // Use the API key here
+        "x-api-key": API_KEY, // Use the API key here
       },
     });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch breeds");
+    }
+
     const breeds = await response.json();
 
     const breedSelect = document.getElementById("breedSelect");
 
+    // Add a default option
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Select a breed";
+    breedSelect.appendChild(defaultOption);
+
+    // Create and append options for each breed
     breeds.forEach((breed) => {
       const option = document.createElement("option");
       option.value = breed.id;
       option.textContent = breed.name;
       breedSelect.appendChild(option);
     });
+
+    // Automatically load the carousel with the first breed when the page loads
+    if (breeds.length > 0) {
+      breedSelect.value = breeds[0].id; // Set the default selected breed
+      loadBreedData(breeds[0].id); // Load the first breed by default
+    }
   } catch (error) {
     console.error("Error fetching breeds:", error);
   }
@@ -65,49 +84,103 @@ initialLoad();
  * - Add a call to this function to the end of your initialLoad function above to create the initial carousel.
  */
 
-// const breedSelect = document.getElementById("breedSelect");
-
-
 // Assuming breedSelect is the dropdown element
-async function handleBreedSelect() {
+// Fetch and update the carousel with images for the selected breed
+// Event listener for breed selection change
+// Event handler for the breed selection dropdown
+
+document
+  .getElementById("breedSelect")
+  .addEventListener("change", async (event) => {
+    const breedId = event.target.value;
+    if (breedId) {
+      await loadBreedData(breedId); // Fetch and display the data for the selected breed
+    }
+  });
+
+// Function to load breed data
+async function loadBreedData(breedId) {
   try {
-    const breedId = breedSelect.value; // Get selected breed
-    const response = await fetch(`https://api.thecatapi.com/v1/images/search?breed_ids=${breedId}&limit=5`); // Request breed images
-    const data = await response.json();
+    // Fetch breed-specific images
+    const response = await fetch(
+      `https://api.thecatapi.com/v1/images/search?breed_ids=${breedId}&limit=5`
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch breed data");
+    }
 
-    // Clear the carousel and info section before adding new content
-    carousel.innerHTML = '';
-    infoDump.innerHTML = '';
+    const images = await response.json();
 
-    data.forEach(cat => {
-      // Create carousel item
-      const carouselItem = document.createElement('div');
-      carouselItem.className = 'carousel-item';
+    const carouselInner = document.getElementById("carouselInner");
+    const infoDump = document.getElementById("infoDump");
+    carouselInner.innerHTML = ""; // Clear the current carousel items
+    infoDump.innerHTML = ""; // Clear the current breed info
 
-      const img = document.createElement('img');
-      img.src = cat.url;
-      img.alt = cat.breeds[0]?.name || "Cat Image";
+    // Check if any images are returned
+    if (images.length === 0) {
+      infoDump.innerHTML = "<p>No images found for this breed.</p>";
+      return; // Exit the function if no images were found
+    }
 
-      carouselItem.appendChild(img);
-      carousel.appendChild(carouselItem);
+    // Create new carousel items for each image
+    images.forEach((imageData, index) => {
+      const carouselItem = document.createElement("div");
+      carouselItem.classList.add("carousel-item");
 
-      // Create breed info
-      const breedInfo = document.createElement('p');
-      breedInfo.textContent = `${cat.breeds[0]?.name || "Unknown breed"}: ${cat.breeds[0]?.description || "No description available."}`;
-      infoDump.appendChild(breedInfo);
+      // Set the first item to be active for Bootstrap carousel functionality
+      if (index === 0) {
+        carouselItem.classList.add("active");
+      }
+
+      const imgElement = document.createElement("img");
+      imgElement.src = imageData.url; // Set the image URL
+      imgElement.alt = "Cat";
+      imgElement.style.width = "100%"; // Adjust as needed
+      imgElement.style.height = "auto";
+
+      carouselItem.appendChild(imgElement);
+      carouselInner.appendChild(carouselItem);
     });
 
-    // Restart the carousel (assuming you have a function for this)
-    restartCarousel();
+    // Retrieve breed information separately if needed
+    const breedResponse = await fetch(
+      `https://api.thecatapi.com/v1/breeds/${breedId}`,
+
+      {
+        headers: {
+          "x-api-key": API_KEY, // Use your API key here
+        },
+      }
+    );
+    if (!breedResponse.ok) {
+      throw new Error("Failed to fetch breed info");
+    }
+
+    const breedInfo = await breedResponse.json();
+
+    // Display breed info in infoDump
+    if (breedInfo) {
+      const infoText = document.createElement("p");
+      infoText.innerHTML = `<strong>${breedInfo.name}</strong>: ${
+        breedInfo.description || "No description available."
+      }`;
+      infoDump.appendChild(infoText);
+
+      // Add temperament information
+      if (breedInfo.temperament) {
+        const temperamentText = document.createElement("p");
+        temperamentText.innerHTML = `<strong>Temperament:</strong> ${breedInfo.temperament}`;
+        infoDump.appendChild(temperamentText);
+      }
+    } else {
+      const infoText = document.createElement("p");
+      infoText.textContent = "No additional breed information available.";
+      infoDump.appendChild(infoText);
+    }
   } catch (error) {
-    console.error('Error fetching breed data:', error);
+    console.error("Error loading breed data:", error); // Handle errors
   }
 }
-
-// Attach this handler to the breed select
-breedSelect.addEventListener('change', handleBreedSelect);
-
-
 
 /**
  * 3. Fork your own sandbox, creating a new one named "JavaScript Axios Lab."
