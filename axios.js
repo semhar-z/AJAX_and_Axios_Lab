@@ -40,7 +40,7 @@ axios.interceptors.response.use(
       `Request took ${response.config.metadata.durationInMS} milliseconds.`
     );
 
-    document.body.style.cursor = 'default';
+    document.body.style.cursor = "default";
     return response;
   },
   (error) => {
@@ -52,7 +52,7 @@ axios.interceptors.response.use(
       `Request took ${error.config.metadata.durationInMS} milliseconds.`
     );
 
-    document.body.style.cursor = 'default';
+    document.body.style.cursor = "default";
     throw error;
   }
 );
@@ -178,16 +178,13 @@ async function loadBreedData(breedId) {
  *   with for future projects.
  */
 
-
 function updateProgress(progressEvent) {
   const total = progressEvent.total;
   const current = progressEvent.loaded;
   const percentCompleted = Math.round((current / total) * 100);
-  document.getElementById('progressBar').style.width = percentCompleted + '%';
+  document.getElementById("progressBar").style.width = percentCompleted + "%";
   console.log(progressEvent); // Inspect the progress event object
 }
-
-
 
 /**
  * 7. As a final element of progress indication, add the following to your axios interceptors:
@@ -206,33 +203,33 @@ function updateProgress(progressEvent) {
  * - You can call this function by clicking on the heart at the top right of any image.
  */
 export async function favourite(imgId) {
- 
-    try {
-      // First, get the list of favourites to see if the image is already favourited
-      const response = await axios.get('favourites');
-      const favourites = response.data;
-  
-      // Check if the image is already favourited
-      const isFavourited = favourites.some(fav => fav.image_id === imgId);
-      
-      if (isFavourited) {
-        // If it is favourited, remove it
-        await axios.delete(`favourites/${favourites.find(fav => fav.image_id === imgId).id}`);
-        console.log(`Removed image ${imgId} from favourites.`);
-      } else {
-        // If it is not favourited, add it
-        await axios.post('favourites', {
-          image_id: imgId,
-        });
-        console.log(`Added image ${imgId} to favourites.`);
-      }
-    } catch (error) {
-      console.error("Error managing favourites:", error);
-    }
-  }
-  
-  
+  try {
+    // First, get the list of favourites to see if the image is already favourited
+    const response = await axios.get("favourites");
+    const favourites = response.data;
 
+    console.log("Current favourites:", favourites);
+
+    // Check if the image is already favourited
+    const isFavourited = favourites.some((fav) => fav.image_id === imgId);
+
+    if (isFavourited) {
+      // If it is favourited, remove it
+      await axios.delete(
+        `favourites/${favourites.find((fav) => fav.image_id === imgId).id}`
+      );
+      console.log(`Removed image ${imgId} from favourites.`);
+    } else {
+      // If it is not favourited, add it
+      await axios.post("favourites", {
+        image_id: imgId,
+      });
+      console.log(`Added image ${imgId} to favourites.`);
+    }
+  } catch (error) {
+    console.error("Error managing favourites:", error);
+  }
+}
 
 /**
  * 9. Test your favourite() function by creating a getFavourites() function.
@@ -244,16 +241,17 @@ export async function favourite(imgId) {
  *    repeat yourself in this section.
  */
 
-
 export async function getFavourites() {
   try {
-    const response = await axios.get('favourites');
+    const response = await axios.get("favourites");
     const favourites = response.data;
 
+    // Log the favourites array to inspect the structure
+    console.log(favourites);
 
- // Log the favourites array to inspect the structure
- console.log(favourites); 
-
+    // Clear the breed description
+    const infoDump = document.getElementById("infoDump");
+    infoDump.innerHTML = ""; // This will clear out the breed description
 
     const carouselInner = document.getElementById("carouselInner");
     carouselInner.innerHTML = ""; // Clear the current carousel items
@@ -264,15 +262,13 @@ export async function getFavourites() {
 
       const imgElement = document.createElement("img");
 
-     // Check if fav.image and fav.image.url exist before setting the src
-     if (fav.image && fav.image.url) {
-      imgElement.src = fav.image.url; 
-    } else {
-      console.warn("No image URL found for favourite:", fav);
-      imgElement.src = "placeholder.jpg"; // Optionally set a placeholder image
-    }
-
-
+      // Check if fav.image and fav.image.url exist before setting the src
+      if (fav.image && fav.image.url) {
+        imgElement.src = fav.image.url;
+      } else {
+        console.warn("No image URL found for favourite:", fav);
+        imgElement.src = "placeholder.jpg"; // Optionally set a placeholder image
+      }
 
       // imgElement.src = fav.image.url; // Assuming fav.image contains the URL
       imgElement.alt = "Favourited Cat Image";
@@ -282,18 +278,16 @@ export async function getFavourites() {
       carouselItem.appendChild(imgElement);
       carouselInner.appendChild(carouselItem);
     });
-
-
-
   } catch (error) {
     console.error("Error fetching favourites:", error);
   }
 }
 
-// Bind the event listener to the button
-document.getElementById('getFavouritesBtn').addEventListener('click', getFavourites);
+// // Bind the event listener to the button
 
-
+document
+  .getElementById("getFavouritesBtn")
+  .addEventListener("click", getFavourites);
 
 /**
  * 10. Test your site, thoroughly!
